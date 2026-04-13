@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- Single-file self-contained publish defaults -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DeployTarget>\\j-nas01\部門_研發二部\QA\tools\BugzillaDumper</DeployTarget>
+  </PropertyGroup>
+
+  <Target Name="CopyToDeployTarget" AfterTargets="Publish">
+    <Message Text="Copying to $(DeployTarget) ..." Importance="high" />
+    <Copy
+      SourceFiles="$(PublishDir)BugzillaDumper.exe"
+      DestinationFolder="$(DeployTarget)"
+      OverwriteReadOnlyFiles="true"
+      ContinueOnError="true" />
+    <Message Text="Deploy complete: $(DeployTarget)\BugzillaDumper.exe" Importance="high" />
+  </Target>
+
+</Project>

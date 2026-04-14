@@ -47,13 +47,29 @@ public class InverseBoolConverter : IValueConverter
         => value is not true;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotImplementedException();
+        => value is not true;
 }
 
 public class NotNullToBoolConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         => value is not null;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>Strips @moneydj.com from email addresses for display.</summary>
+public class EmailToUsernameConverter : IValueConverter
+{
+    private const string Domain = "@moneydj.com";
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is not string email) return value;
+        var idx = email.IndexOf(Domain, StringComparison.OrdinalIgnoreCase);
+        return idx >= 0 ? email[..idx] : email;
+    }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotImplementedException();

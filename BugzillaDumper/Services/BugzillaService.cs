@@ -22,18 +22,29 @@ public class BugzillaService(HttpClient httpClient)
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_baseUrl) && !string.IsNullOrWhiteSpace(_apiKey);
 
+    private static string ToEmail(string input)
+        => input.Contains('@') ? input : $"{input}@moneydj.com";
+
     public async Task<List<BugSummary>> SearchBugsAsync(SearchCriteria criteria)
     {
-        // When Limit <= 0, fetch all pages automatically
+        List<BugSummary> results;
+
         if (criteria.Limit <= 0)
-            return await SearchAllBugsAsync(criteria);
+            results = await SearchAllBugsAsync(criteria);
+        else
+        {
+            var url = BuildSearchUrl(criteria, limit: criteria.Limit, offset: 0);
+            var response = await httpClient.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+            results = (await response.Content.ReadFromJsonAsync<BugListResponse>())?.Bugs ?? [];
+        }
 
-        var url = BuildSearchUrl(criteria, limit: criteria.Limit, offset: 0);
-        var response = await httpClient.GetAsync(url);
-        response.EnsureSuccessStatusCode();
+        // Client-side sort as reliable fallback — ISO-8601 strings compare correctly as strings
+        results.Sort((a, b) => criteria.NewestFirst
+            ? string.Compare(b.CreationTime, a.CreationTime, StringComparison.Ordinal)
+            : string.Compare(a.CreationTime, b.CreationTime, StringComparison.Ordinal));
 
-        var result = await response.Content.ReadFromJsonAsync<BugListResponse>();
-        return result?.Bugs ?? [];
+        return results;
     }
 
     private async Task<List<BugSummary>> SearchAllBugsAsync(SearchCriteria criteria)
@@ -52,7 +63,6 @@ public class BugzillaService(HttpClient httpClient)
             var page = result?.Bugs ?? [];
             all.AddRange(page);
 
-            // Fewer results than page size means we've reached the last page
             if (page.Count < pageSize)
                 break;
 
@@ -73,23 +83,31 @@ public class BugzillaService(HttpClient httpClient)
         if (!string.IsNullOrWhiteSpace(criteria.Component))
             query["component"] = criteria.Component;
         if (!string.IsNullOrWhiteSpace(criteria.AssignedTo))
-            query["assigned_to"] = criteria.AssignedTo;
+            query["assigned_to"] = ToEmail(criteria.AssignedTo);
+        if (!string.IsNullOrWhiteSpace(criteria.Reporter))
+            query["creator"] = ToEmail(criteria.Reporter);
         if (!string.IsNullOrWhiteSpace(criteria.Summary))
             query["summary"] = criteria.Summary;
 
         query["limit"] = limit.ToString();
         query["offset"] = offset.ToString();
 
-        // NameValueCollection merges duplicate keys into "status=A%2CB" which Bugzilla rejects.
-        // Append each status value as a separate &status=X segment instead.
-        var statusSegment = string.Empty;
+        // Append multi-value and space-containing params manually to avoid NameValueCollection encoding issues
+        var extra = string.Empty;
+
+        // order: use creation_ts (internal Bugzilla field name) with proper %20 encoding
+        extra += criteria.NewestFirst
+            ? "&order=creation_ts%20DESC"
+            : "&order=creation_ts%20ASC";
+
+        // status: repeated keys must be separate &status=X segments
         if (!string.IsNullOrWhiteSpace(criteria.Status))
         {
             foreach (var s in criteria.Status.Split(',', StringSplitOptions.RemoveEmptyEntries))
-                statusSegment += $"&status={Uri.EscapeDataString(s.Trim())}";
+                extra += $"&status={Uri.EscapeDataString(s.Trim())}";
         }
 
-        return $"{_baseUrl}/rest/bug?{query}{statusSegment}";
+        return $"{_baseUrl}/rest/bug?{query}{extra}";
     }
 
     public async Task<BugDetail?> GetBugDetailAsync(int bugId)

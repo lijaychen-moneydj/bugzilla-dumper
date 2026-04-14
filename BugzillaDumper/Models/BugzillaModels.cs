@@ -141,8 +141,10 @@ public class SearchCriteria
     public string Component { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string AssignedTo { get; set; } = string.Empty;
+    public string Reporter { get; set; } = string.Empty;
     public string Summary { get; set; } = string.Empty;
-    public int Limit { get; set; } = 100;
+    public int Limit { get; set; } = 0;
+    public bool NewestFirst { get; set; } = true;
 }
 
 public class AppSettings

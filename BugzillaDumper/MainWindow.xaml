@@ -19,6 +19,7 @@
         <conv:NotNullToVisibilityConverter x:Key="NotNullToVisibility"/>
         <conv:NotNullToBoolConverter x:Key="NotNullToBool"/>
         <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility"/>
+        <conv:EmailToUsernameConverter x:Key="EmailToUsername"/>
 
         <!-- Colors -->
         <SolidColorBrush x:Key="PrimaryBrush" Color="#4472C4"/>
@@ -216,63 +217,143 @@
         <!-- Search Filter Panel -->
         <Border Grid.Row="2" Style="{StaticResource Card}" Margin="12,8,12,0">
             <Expander Header="Search Filters" IsExpanded="True">
-                <Grid Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="70"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="PRODUCT" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource InputBox}"
-                                 Text="{Binding SearchProduct, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="2">
-                        <TextBlock Text="COMPONENT" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource InputBox}"
-                                 Text="{Binding SearchComponent, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="4">
-                        <TextBlock Text="STATUS" Style="{StaticResource FieldLabel}"/>
-                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                CornerRadius="4" Background="White" Padding="8,5">
-                            <WrapPanel Orientation="Horizontal">
-                                <CheckBox Content="CONFIRMED"  IsChecked="{Binding StatusConfirmed}"
-                                          Margin="0,0,10,2" FontSize="12"/>
-                                <CheckBox Content="IN_PROGRESS" IsChecked="{Binding StatusInProgress}"
-                                          Margin="0,0,10,2" FontSize="12"/>
-                                <CheckBox Content="RESOLVED"   IsChecked="{Binding StatusResolved}"
-                                          Margin="0,0,10,2" FontSize="12"/>
-                                <CheckBox Content="REOPENED"   IsChecked="{Binding StatusReopened}"
-                                          Margin="0,0,0,2"  FontSize="12"/>
-                            </WrapPanel>
-                        </Border>
-                    </StackPanel>
-                    <StackPanel Grid.Column="6">
-                        <TextBlock Text="ASSIGNED TO" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource InputBox}"
-                                 Text="{Binding SearchAssignedTo, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="8">
-                        <TextBlock Text="SUMMARY KEYWORD" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource InputBox}"
-                                 Text="{Binding SearchSummary, UpdateSourceTrigger=PropertyChanged}"/>
-                    </StackPanel>
-                    <StackPanel Grid.Column="10">
-                        <TextBlock Text="LIMIT (0=all)" Style="{StaticResource FieldLabel}"/>
-                        <TextBox Style="{StaticResource InputBox}"
-                                 Text="{Binding SearchLimit, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="0 = fetch all (auto pagination)"/>
-                    </StackPanel>
-                </Grid>
+                <StackPanel Margin="0,10,0,0">
+                    <!-- Row 1 -->
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="PRODUCT" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchProduct, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="COMPONENT" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchComponent, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="STATUS" Style="{StaticResource FieldLabel}"/>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="4" Background="White" Padding="8,5">
+                                <WrapPanel Orientation="Horizontal">
+                                    <CheckBox Content="CONFIRMED"  IsChecked="{Binding StatusConfirmed}"
+                                              Margin="0,0,12,0" FontSize="12"/>
+                                    <CheckBox Content="IN_PROGRESS" IsChecked="{Binding StatusInProgress}"
+                                              Margin="0,0,12,0" FontSize="12"/>
+                                    <CheckBox Content="RESOLVED"   IsChecked="{Binding StatusResolved}"
+                                              Margin="0,0,12,0" FontSize="12"/>
+                                    <CheckBox Content="REOPENED"   IsChecked="{Binding StatusReopened}"
+                                              FontSize="12"/>
+                                </WrapPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                    <!-- Row 2 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="70"/>
+                            <ColumnDefinition Width="12"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="ASSIGNED TO" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchAssignedTo, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="REPORTER" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchReporter, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Filter by bug creator (email)"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="SUMMARY KEYWORD" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchSummary, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="6">
+                            <TextBlock Text="LIMIT (0=all)" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource InputBox}"
+                                     Text="{Binding SearchLimit, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="0 = fetch all (auto pagination)"/>
+                        </StackPanel>
+                        <!-- Sort order toggle -->
+                        <StackPanel Grid.Column="8" VerticalAlignment="Bottom">
+                            <TextBlock Text="SORT" Style="{StaticResource FieldLabel}"/>
+                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="4" Background="White" Padding="2">
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Content="新→舊" GroupName="SortOrder" Padding="8,5"
+                                                 IsChecked="{Binding SortNewestFirst}"
+                                                 FontSize="12" Cursor="Hand">
+                                        <RadioButton.Style>
+                                            <Style TargetType="RadioButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RadioButton">
+                                                            <Border x:Name="Bg" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsChecked" Value="False">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </RadioButton.Style>
+                                    </RadioButton>
+                                    <RadioButton Content="舊→新" GroupName="SortOrder" Padding="8,5"
+                                                 IsChecked="{Binding SortNewestFirst, Converter={StaticResource InverseBool}}"
+                                                 FontSize="12" Cursor="Hand">
+                                        <RadioButton.Style>
+                                            <Style TargetType="RadioButton">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="RadioButton">
+                                                            <Border x:Name="Bg" CornerRadius="3" Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="{StaticResource PrimaryBrush}"/>
+                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsChecked" Value="False">
+                                                                    <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </RadioButton.Style>
+                                    </RadioButton>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
             </Expander>
         </Border>
 
@@ -494,7 +575,10 @@
                                 <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="70"/>
                                 <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*" MinWidth="150"/>
                                 <DataGridTextColumn Header="Component" Binding="{Binding Component}" Width="100"/>
-                                <DataGridTextColumn Header="Assigned To" Binding="{Binding AssignedTo}" Width="120"/>
+                                <DataGridTextColumn Header="Assigned To"
+                                    Binding="{Binding AssignedTo, Converter={StaticResource EmailToUsername}}" Width="110"/>
+                                <DataGridTextColumn Header="Reporter"
+                                    Binding="{Binding Creator, Converter={StaticResource EmailToUsername}}" Width="110"/>
                             </DataGrid.Columns>
                         </DataGrid>
 
@@ -629,9 +713,9 @@
                                         <TextBlock Grid.Row="1" Grid.Column="3" Text="{Binding Version}" FontSize="12" Margin="0,0,0,8"/>
 
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Assigned To" Style="{StaticResource FieldLabel}"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AssignedTo}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="2" Text="Creator" Style="{StaticResource FieldLabel}"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Creator}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AssignedTo, Converter={StaticResource EmailToUsername}}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="2" Text="Reporter" Style="{StaticResource FieldLabel}"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Creator, Converter={StaticResource EmailToUsername}}" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"/>
 
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Created" Style="{StaticResource FieldLabel}"/>
                                         <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding CreationTime}" FontSize="12" Margin="0,0,0,8"/>
@@ -686,7 +770,7 @@
                                                                 <Run Text="{Binding Count}"/>
                                                             </TextBlock>
                                                         </Border>
-                                                        <TextBlock Grid.Column="1" Text="{Binding Author}" FontSize="12"
+                                                        <TextBlock Grid.Column="1" Text="{Binding Author, Converter={StaticResource EmailToUsername}}" FontSize="12"
                                                                    FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"
                                                                    VerticalAlignment="Center"/>
                                                         <TextBlock Grid.Column="2" Text="{Binding CreationTime}" FontSize="11"

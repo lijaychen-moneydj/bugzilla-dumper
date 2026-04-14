@@ -25,8 +25,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _statusResolved = false;
     [ObservableProperty] private bool _statusReopened = true;
     [ObservableProperty] private string _searchAssignedTo = string.Empty;
+    [ObservableProperty] private string _searchReporter = string.Empty;
     [ObservableProperty] private string _searchSummary = string.Empty;
     [ObservableProperty] private int _searchLimit = 0;
+    [ObservableProperty] private bool _sortNewestFirst = true;
 
     private string BuildStatusCriteria()
     {
@@ -95,8 +97,10 @@ public partial class MainViewModel : ObservableObject
                 Component = SearchComponent,
                 Status = BuildStatusCriteria(),
                 AssignedTo = SearchAssignedTo,
+                Reporter = SearchReporter,
                 Summary = SearchSummary,
-                Limit = SearchLimit
+                Limit = SearchLimit,
+                NewestFirst = SortNewestFirst
             };
 
             var results = await _bugzillaService.SearchBugsAsync(criteria);

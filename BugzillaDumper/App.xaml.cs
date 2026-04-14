@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using BugzillaDumper.Services;
@@ -27,10 +28,14 @@ public partial class App : Application
         {
             var httpClient = new HttpClient();
             var bugzillaService = new BugzillaService(httpClient);
-            var viewModel = new MainViewModel(bugzillaService);
+            var updateService = new UpdateService();
+            var viewModel = new MainViewModel(bugzillaService, updateService);
 
             var window = new MainWindow(viewModel);
             window.Show();
+
+            // Background update check — non-blocking, never crashes the app
+            _ = CheckForUpdatesAsync(viewModel, updateService);
         }
         catch (Exception ex)
         {
@@ -54,6 +59,13 @@ public partial class App : Application
     {
         LogAndShow(e.Exception, "UnobservedTaskException");
         e.SetObserved();
+    }
+
+    private static async Task CheckForUpdatesAsync(MainViewModel viewModel, UpdateService updateService)
+    {
+        var newVersion = await updateService.CheckAsync();
+        if (newVersion is not null)
+            Current.Dispatcher.Invoke(() => viewModel.SetUpdateAvailable(newVersion));
     }
 
     private static void LogAndShow(Exception ex, string source)

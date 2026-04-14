@@ -21,6 +21,8 @@
 
   <PropertyGroup>
     <DeployTarget>\\j-nas01\部門_研發二部\QA\tools\BugzillaDumper</DeployTarget>
+    <!-- Keep in sync with AppVersion.cs -->
+    <AppVersionNumber>0.16</AppVersionNumber>
   </PropertyGroup>
 
   <Target Name="CopyToDeployTarget" AfterTargets="Publish">
@@ -30,7 +32,17 @@
       DestinationFolder="$(DeployTarget)"
       OverwriteReadOnlyFiles="true"
       ContinueOnError="true" />
-    <Message Text="Deploy complete: $(DeployTarget)\BugzillaDumper.exe" Importance="high" />
+    <!-- Write version.txt so clients can detect updates -->
+    <WriteLinesToFile
+      File="$(PublishDir)version.txt"
+      Lines="$(AppVersionNumber)"
+      Overwrite="true" />
+    <Copy
+      SourceFiles="$(PublishDir)version.txt"
+      DestinationFolder="$(DeployTarget)"
+      OverwriteReadOnlyFiles="true"
+      ContinueOnError="true" />
+    <Message Text="Deploy complete: $(DeployTarget)\BugzillaDumper.exe  [v$(AppVersionNumber)]" Importance="high" />
   </Target>
 
 </Project>

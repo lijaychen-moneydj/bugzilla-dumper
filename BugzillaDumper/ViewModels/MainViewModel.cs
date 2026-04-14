@@ -14,6 +14,7 @@ namespace BugzillaDumper.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly BugzillaService _bugzillaService;
+    private readonly UpdateService _updateService;
     private CancellationTokenSource? _fetchCts;
 
     [ObservableProperty] private string _bugzillaUrl = string.Empty;
@@ -24,6 +25,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _statusInProgress = true;
     [ObservableProperty] private bool _statusResolved = false;
     [ObservableProperty] private bool _statusReopened = true;
+    [ObservableProperty] private bool _statusVerified = false;
     [ObservableProperty] private string _searchAssignedTo = string.Empty;
     [ObservableProperty] private string _searchReporter = string.Empty;
     [ObservableProperty] private string _searchSummary = string.Empty;
@@ -37,6 +39,7 @@ public partial class MainViewModel : ObservableObject
         if (StatusInProgress) statuses.Add("IN_PROGRESS");
         if (StatusResolved)   statuses.Add("RESOLVED");
         if (StatusReopened)   statuses.Add("REOPENED");
+        if (StatusVerified)   statuses.Add("VERIFIED");
         return string.Join(",", statuses);
     }
 
@@ -52,10 +55,39 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _statusMessage = "Ready";
     [ObservableProperty] private bool _isConnected;
 
-    public MainViewModel(BugzillaService bugzillaService)
+    // Update
+    [ObservableProperty] private bool _updateAvailable;
+    [ObservableProperty] private string _updateVersionText = string.Empty;
+    [ObservableProperty] private bool _isUpdating;
+
+    public MainViewModel(BugzillaService bugzillaService, UpdateService updateService)
     {
         _bugzillaService = bugzillaService;
+        _updateService = updateService;
         LoadSettings();
+    }
+
+    public void SetUpdateAvailable(string version)
+    {
+        UpdateVersionText = $"v{version}";
+        UpdateAvailable = true;
+    }
+
+    [RelayCommand]
+    private async Task ApplyUpdateAsync()
+    {
+        IsUpdating = true;
+        StatusMessage = "正在下載更新…";
+        try
+        {
+            await Task.Run(() => _updateService.ApplyUpdate(msg =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() => StatusMessage = msg)));
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"更新失敗：{ex.Message}";
+            IsUpdating = false;
+        }
     }
 
     private void LoadSettings()

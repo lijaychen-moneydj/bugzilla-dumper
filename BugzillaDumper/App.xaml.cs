@@ -34,8 +34,9 @@ public partial class App : Application
             var window = new MainWindow(viewModel);
             window.Show();
 
-            // Background update check — non-blocking, never crashes the app
+            // Startup check + periodic timer every 30 minutes
             _ = CheckForUpdatesAsync(viewModel, updateService);
+            StartUpdateTimer(viewModel, updateService);
         }
         catch (Exception ex)
         {
@@ -61,8 +62,18 @@ public partial class App : Application
         e.SetObserved();
     }
 
+    private static void StartUpdateTimer(MainViewModel viewModel, UpdateService updateService)
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
+        timer.Tick += (_, _) => _ = CheckForUpdatesAsync(viewModel, updateService);
+        timer.Start();
+    }
+
     private static async Task CheckForUpdatesAsync(MainViewModel viewModel, UpdateService updateService)
     {
+        // Skip if user already knows about an update
+        if (viewModel.UpdateAvailable) return;
+
         var newVersion = await updateService.CheckAsync();
         if (newVersion is not null)
             Current.Dispatcher.Invoke(() => viewModel.SetUpdateAvailable(newVersion));

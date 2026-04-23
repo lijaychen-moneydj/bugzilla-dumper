@@ -20,6 +20,7 @@
         <conv:NotNullToBoolConverter x:Key="NotNullToBool"/>
         <conv:StringNotEmptyToVisibilityConverter x:Key="StringNotEmptyToVisibility"/>
         <conv:EmailToUsernameConverter x:Key="EmailToUsername"/>
+        <conv:BugMatchesKeywordConverter x:Key="BugMatchesKeyword"/>
 
         <!-- Colors -->
         <SolidColorBrush x:Key="PrimaryBrush" Color="#4472C4"/>
@@ -426,10 +427,21 @@
                             <StackPanel>
                                 <TextBlock Text="BUG LIST" FontSize="12" FontWeight="Bold"
                                            Foreground="{StaticResource TextSecondaryBrush}"/>
-                                <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}">
-                                    <Run Text="{Binding Bugs.Count, Mode=OneWay}"/>
-                                    <Run Text=" bugs found"/>
-                                </TextBlock>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}">
+                                        <Run Text="{Binding Bugs.Count, Mode=OneWay}"/>
+                                        <Run Text=" bugs found"/>
+                                    </TextBlock>
+                                    <!-- Match count badge (visible when keyword is set) -->
+                                    <Border Background="#FEF9C3" BorderBrush="#FDE68A" BorderThickness="1"
+                                            CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                            Visibility="{Binding ListKeyword, Converter={StaticResource StringNotEmptyToVisibility}}">
+                                        <TextBlock FontSize="12" Foreground="#92400E">
+                                            <Run Text="{Binding ListMatchCount, Mode=OneWay}"/>
+                                            <Run Text=" matched"/>
+                                        </TextBlock>
+                                    </Border>
+                                </StackPanel>
                             </StackPanel>
                             <!-- List-only export -->
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
@@ -508,6 +520,28 @@
                         </Border>
                     </StackPanel>
 
+                    <!-- List keyword search bar -->
+                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="4" Background="White" Margin="0,0,0,8" Padding="2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding ListKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                     BorderThickness="0" Padding="8,5" FontSize="12"
+                                     VerticalContentAlignment="Center"
+                                     ToolTip="在目前清單中搜尋關鍵字（ID / 標題 / 元件 / 產品 / 指派人 / 狀態）"/>
+                            <!-- Clear button -->
+                            <Button Grid.Column="1" Content="✕" Width="28" Height="28"
+                                    BorderThickness="0" Background="Transparent" Cursor="Hand"
+                                    FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                    Visibility="{Binding ListKeyword, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                    Command="{Binding ClearListKeywordCommand}"/>
+                        </Grid>
+                    </Border>
+
                     <!-- Bug DataGrid with Loading Overlay -->
                     <Grid Grid.Row="1">
                         <DataGrid ItemsSource="{Binding Bugs}"
@@ -538,11 +572,22 @@
                                 <Style TargetType="DataGridRow">
                                     <Setter Property="Height" Value="30"/>
                                     <Style.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#DBEAFE"/>
-                                        </Trigger>
+                                        <!-- Keyword highlight (lowest priority — overridden by hover/select) -->
+                                        <DataTrigger Value="True">
+                                            <DataTrigger.Binding>
+                                                <MultiBinding Converter="{StaticResource BugMatchesKeyword}">
+                                                    <Binding/>
+                                                    <Binding Path="DataContext.ListKeyword"
+                                                             RelativeSource="{RelativeSource AncestorType=DataGrid}"/>
+                                                </MultiBinding>
+                                            </DataTrigger.Binding>
+                                            <Setter Property="Background" Value="#FEF9C3"/>
+                                        </DataTrigger>
                                         <Trigger Property="IsMouseOver" Value="True">
                                             <Setter Property="Background" Value="#EFF6FF"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#DBEAFE"/>
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>

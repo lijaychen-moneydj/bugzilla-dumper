@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using BugzillaDumper.Models;
 
 namespace BugzillaDumper.Converters;
 
@@ -56,6 +57,27 @@ public class NotNullToBoolConverter : IValueConverter
         => value is not null;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotImplementedException();
+}
+
+/// <summary>
+/// MultiBinding converter: (BugSummary, keyword) → bool
+/// Returns true when the bug contains the keyword in any visible field.
+/// Used to drive row highlight and match-count.
+/// </summary>
+public class BugMatchesKeywordConverter : IMultiValueConverter
+{
+    public static readonly BugMatchesKeywordConverter Instance = new();
+
+    public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values.Length < 2 || values[0] is not BugSummary bug) return false;
+        var kw = values[1] as string;
+        if (string.IsNullOrWhiteSpace(kw)) return false;
+        return BugzillaDumper.ViewModels.MainViewModel.BugMatchesKeyword(bug, kw);
+    }
+
+    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
         => throw new NotImplementedException();
 }
 

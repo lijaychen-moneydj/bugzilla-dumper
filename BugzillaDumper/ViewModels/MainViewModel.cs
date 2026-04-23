@@ -60,6 +60,33 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _updateVersionText = string.Empty;
     [ObservableProperty] private bool _isUpdating;
 
+    // List keyword search
+    [ObservableProperty] private string _listKeyword = string.Empty;
+    [ObservableProperty] private int _listMatchCount;
+
+    partial void OnListKeywordChanged(string _) => RefreshMatchCount();
+
+    [RelayCommand]
+    private void ClearListKeyword() => ListKeyword = string.Empty;
+
+    private void RefreshMatchCount()
+    {
+        if (string.IsNullOrWhiteSpace(ListKeyword)) { ListMatchCount = 0; return; }
+        ListMatchCount = 0;
+        foreach (var b in Bugs)
+            if (BugMatchesKeyword(b, ListKeyword)) ListMatchCount++;
+    }
+
+    public static bool BugMatchesKeyword(BugSummary bug, string keyword)
+        => bug.Summary.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.Id.ToString().Contains(keyword)
+        || bug.Component.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.Product.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.AssignedTo.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.Creator.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.Status.Contains(keyword, StringComparison.OrdinalIgnoreCase)
+        || bug.Resolution.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+
     public MainViewModel(BugzillaService bugzillaService, UpdateService updateService)
     {
         _bugzillaService = bugzillaService;
@@ -141,6 +168,7 @@ public partial class MainViewModel : ObservableObject
 
             StatusMessage = $"Found {results.Count} bug(s).";
             IsConnected = true;
+            RefreshMatchCount();
         }
         catch (Exception ex)
         {

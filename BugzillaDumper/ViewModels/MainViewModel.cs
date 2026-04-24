@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -259,6 +260,40 @@ public partial class MainViewModel : ObservableObject
             {
                 StatusMessage = $"Export error: {ex.Message}";
             }
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportFullDumpToFolderAsync()
+    {
+        var details = await FetchAllDetailsAsync();
+        if (details is null) return;
+
+        var outputFolder = Path.Combine(
+            AppContext.BaseDirectory,
+            $"bugs_full_{DateTime.Now:yyyyMMdd_HHmmss}");
+
+        IsFetchingAll = true;
+        FetchProgress = 0;
+        FetchTotal = details.Count;
+
+        try
+        {
+            await ExportService.ExportToFolderAsync(
+                details, outputFolder,
+                fetchAttachments: id => _bugzillaService.GetBugAttachmentsAsync(id),
+                onStatus: msg => System.Windows.Application.Current.Dispatcher.Invoke(() => StatusMessage = msg),
+                onProgress: i  => System.Windows.Application.Current.Dispatcher.Invoke(() => FetchProgress = i));
+
+            System.Diagnostics.Process.Start("explorer.exe", outputFolder);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Export error: {ex.Message}";
+        }
+        finally
+        {
+            IsFetchingAll = false;
         }
     }
 

@@ -501,6 +501,10 @@
                                             Style="{StaticResource SuccessButton}"
                                             Command="{Binding ExportFullDumpToExcelCommand}"
                                             IsEnabled="{Binding IsFetchingAll, Converter={StaticResource InverseBool}}"/>
+                                    <Button Content="含附件 (資料夾)" FontSize="11" Padding="8,4" Margin="0,0,4,0"
+                                            Style="{StaticResource PrimaryButton}"
+                                            Command="{Binding ExportFullDumpToFolderCommand}"
+                                            IsEnabled="{Binding IsFetchingAll, Converter={StaticResource InverseBool}}"/>
                                     <Button Content="Cancel" FontSize="11" Padding="8,4"
                                             Background="#EF4444" Foreground="White"
                                             BorderThickness="0" Cursor="Hand"
@@ -518,29 +522,28 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+                        <!-- List keyword search bar -->
+                        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                CornerRadius="4" Background="White" Margin="0,8,0,0" Padding="2">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding ListKeyword, UpdateSourceTrigger=PropertyChanged}"
+                                         BorderThickness="0" Padding="8,5" FontSize="12"
+                                         VerticalContentAlignment="Center"
+                                         ToolTip="在目前清單中搜尋關鍵字（ID / 標題 / 元件 / 產品 / 指派人 / 狀態）"/>
+                                <!-- Clear button -->
+                                <Button Grid.Column="1" Content="✕" Width="28" Height="28"
+                                        BorderThickness="0" Background="Transparent" Cursor="Hand"
+                                        FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                                        Visibility="{Binding ListKeyword, Converter={StaticResource StringNotEmptyToVisibility}}"
+                                        Command="{Binding ClearListKeywordCommand}"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
-
-                    <!-- List keyword search bar -->
-                    <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                            CornerRadius="4" Background="White" Margin="0,0,0,8" Padding="2">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Grid.Column="0"
-                                     Text="{Binding ListKeyword, UpdateSourceTrigger=PropertyChanged}"
-                                     BorderThickness="0" Padding="8,5" FontSize="12"
-                                     VerticalContentAlignment="Center"
-                                     ToolTip="在目前清單中搜尋關鍵字（ID / 標題 / 元件 / 產品 / 指派人 / 狀態）"/>
-                            <!-- Clear button -->
-                            <Button Grid.Column="1" Content="✕" Width="28" Height="28"
-                                    BorderThickness="0" Background="Transparent" Cursor="Hand"
-                                    FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                                    Visibility="{Binding ListKeyword, Converter={StaticResource StringNotEmptyToVisibility}}"
-                                    Command="{Binding ClearListKeywordCommand}"/>
-                        </Grid>
-                    </Border>
 
                     <!-- Bug DataGrid with Loading Overlay -->
                     <Grid Grid.Row="1">

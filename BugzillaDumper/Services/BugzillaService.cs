@@ -146,4 +146,12 @@ public class BugzillaService(HttpClient httpClient)
         detail.Comments = await GetBugCommentsAsync(bugId);
         return detail;
     }
+
+    public async Task<List<BugAttachment>> GetBugAttachmentsAsync(int bugId)
+    {
+        var url = $"{_baseUrl}/rest/bug/{bugId}/attachment?api_key={Uri.EscapeDataString(_apiKey)}&include_fields=id,file_name,content_type,size,data,creator,creation_time,description";
+        var response = await httpClient.GetStringAsync(url);
+        var result = JsonSerializer.Deserialize<BugAttachmentResponse>(response);
+        return result?.Bugs.TryGetValue(bugId.ToString(), out var list) == true ? list : [];
+    }
 }

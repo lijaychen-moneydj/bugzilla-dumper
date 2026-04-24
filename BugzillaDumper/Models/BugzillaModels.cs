@@ -135,6 +135,24 @@ public class BugComment
     public int Count { get; set; }
 }
 
+public class BugAttachment
+{
+    [JsonPropertyName("id")]            public int    Id           { get; set; }
+    [JsonPropertyName("file_name")]     public string FileName     { get; set; } = string.Empty;
+    [JsonPropertyName("content_type")]  public string ContentType  { get; set; } = string.Empty;
+    [JsonPropertyName("size")]          public long   Size         { get; set; }
+    [JsonPropertyName("data")]          public string? Data        { get; set; }
+    [JsonPropertyName("creator")]       public string Creator      { get; set; } = string.Empty;
+    [JsonPropertyName("creation_time")] public string CreationTime { get; set; } = string.Empty;
+    [JsonPropertyName("description")]   public string Description  { get; set; } = string.Empty;
+}
+
+public class BugAttachmentResponse
+{
+    [JsonPropertyName("bugs")]
+    public Dictionary<string, List<BugAttachment>> Bugs { get; set; } = [];
+}
+
 public class SearchCriteria
 {
     public string Product { get; set; } = string.Empty;

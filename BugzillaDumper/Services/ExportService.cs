@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
+using System.Threading.Tasks;
 using BugzillaDumper.Models;
 using ClosedXML.Excel;
 
@@ -76,6 +78,53 @@ public static class ExportService
         AddCommentsSheet(wsComments, allComments);
 
         wb.SaveAs(filePath);
+    }
+
+    // ── Folder export (full dump + attachments) ──────────────────────────────
+
+    public static async Task ExportToFolderAsync(
+        List<BugDetail> details,
+        string outputFolder,
+        Func<int, Task<List<BugAttachment>>> fetchAttachments,
+        Action<string> onStatus,
+        Action<int> onProgress)
+    {
+        Directory.CreateDirectory(outputFolder);
+
+        onStatus("Writing data.json...");
+        await File.WriteAllTextAsync(
+            Path.Combine(outputFolder, "data.json"),
+            JsonSerializer.Serialize(details, JsonOptions));
+
+        var attachmentsRoot = Path.Combine(outputFolder, "attachments");
+
+        for (int i = 0; i < details.Count; i++)
+        {
+            var bug = details[i];
+            onStatus($"Fetching attachments {i + 1}/{details.Count}  (Bug #{bug.Id})...");
+
+            List<BugAttachment> attachments;
+            try   { attachments = await fetchAttachments(bug.Id); }
+            catch { attachments = []; }
+
+            if (attachments.Count > 0)
+            {
+                var bugFolder = Path.Combine(attachmentsRoot, bug.Id.ToString());
+                Directory.CreateDirectory(bugFolder);
+
+                for (int j = 0; j < attachments.Count; j++)
+                {
+                    var att = attachments[j];
+                    if (string.IsNullOrEmpty(att.Data)) continue;
+
+                    var safeName = string.Concat(att.FileName.Split(Path.GetInvalidFileNameChars()));
+                    var filePath = Path.Combine(bugFolder, $"{j + 1:D3}_{safeName}");
+                    await File.WriteAllBytesAsync(filePath, Convert.FromBase64String(att.Data));
+                }
+            }
+
+            onProgress(i + 1);
+        }
     }
 
     // ── Sheet writers ─────────────────────────────────────────────────────────

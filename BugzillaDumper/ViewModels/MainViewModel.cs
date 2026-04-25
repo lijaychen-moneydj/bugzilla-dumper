@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,7 +18,8 @@ namespace BugzillaDumper.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly BugzillaService _bugzillaService;
-    private readonly UpdateService _updateService;
+    private readonly UpdateService   _updateService;
+    private readonly GitLabService   _gitLabService;
     private CancellationTokenSource? _fetchCts;
 
     [ObservableProperty] private string _bugzillaUrl = string.Empty;
@@ -57,9 +61,21 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isConnected;
 
     // Update
-    [ObservableProperty] private bool _updateAvailable;
+    [ObservableProperty] private bool   _updateAvailable;
     [ObservableProperty] private string _updateVersionText = string.Empty;
-    [ObservableProperty] private bool _isUpdating;
+    [ObservableProperty] private bool   _isUpdating;
+
+    // GitLab
+    [ObservableProperty] private string _gitLabBaseUrl      = string.Empty;
+    [ObservableProperty] private string _gitLabToken        = string.Empty;
+    [ObservableProperty] private string _gitLabProjectPath  = string.Empty;
+    [ObservableProperty] private string _gitLabProjectName  = string.Empty;
+    [ObservableProperty] private bool   _isGitLabProjectValid;
+    [ObservableProperty] private bool   _isImportingToGitLab;
+    [ObservableProperty] private int    _gitLabImportProgress;
+    [ObservableProperty] private int    _gitLabImportTotal;
+    [ObservableProperty] private bool   _isGitLabPanelVisible;
+    [ObservableProperty] private int    _selectedBugCount;
 
     // List keyword search
     [ObservableProperty] private string _listKeyword = string.Empty;
@@ -88,11 +104,32 @@ public partial class MainViewModel : ObservableObject
         || bug.Status.Contains(keyword, StringComparison.OrdinalIgnoreCase)
         || bug.Resolution.Contains(keyword, StringComparison.OrdinalIgnoreCase);
 
-    public MainViewModel(BugzillaService bugzillaService, UpdateService updateService)
+    public MainViewModel(BugzillaService bugzillaService, UpdateService updateService, GitLabService gitLabService)
     {
         _bugzillaService = bugzillaService;
-        _updateService = updateService;
+        _updateService   = updateService;
+        _gitLabService   = gitLabService;
         LoadSettings();
+
+        // Track IsSelected changes on each bug for SelectedBugCount
+        Bugs.CollectionChanged += OnBugsCollectionChanged;
+    }
+
+    private void OnBugsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+            foreach (BugSummary b in e.NewItems)
+                b.PropertyChanged += OnBugSelectionChanged;
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+            SelectedBugCount = 0;
+        else
+            SelectedBugCount = Bugs.Count(b => b.IsSelected);
+    }
+
+    private void OnBugSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "IsSelected")
+            SelectedBugCount = Bugs.Count(b => b.IsSelected);
     }
 
     public void SetUpdateAvailable(string version)
@@ -120,18 +157,145 @@ public partial class MainViewModel : ObservableObject
 
     private void LoadSettings()
     {
-        var settings = SettingsService.Load();
-        BugzillaUrl = settings.BugzillaUrl;
-        ApiKey = settings.ApiKey;
+        var s = SettingsService.Load();
+        BugzillaUrl       = s.BugzillaUrl;
+        ApiKey            = s.ApiKey;
+        GitLabBaseUrl     = s.GitLabBaseUrl;
+        GitLabToken       = s.GitLabToken;
+        GitLabProjectPath = s.GitLabProjectPath;
     }
+
+    private void PersistSettings() =>
+        SettingsService.Save(new AppSettings
+        {
+            BugzillaUrl       = BugzillaUrl,
+            ApiKey            = ApiKey,
+            GitLabBaseUrl     = GitLabBaseUrl,
+            GitLabToken       = GitLabToken,
+            GitLabProjectPath = GitLabProjectPath,
+        });
 
     [RelayCommand]
     private void SaveSettings()
     {
-        SettingsService.Save(new AppSettings { BugzillaUrl = BugzillaUrl, ApiKey = ApiKey });
+        PersistSettings();
         _bugzillaService.Configure(BugzillaUrl, ApiKey);
         IsConnected = true;
         StatusMessage = "Settings saved.";
+    }
+
+    // ── GitLab commands ───────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void ToggleGitLabPanel() => IsGitLabPanelVisible = !IsGitLabPanelVisible;
+
+    [RelayCommand]
+    private async Task ValidateGitLabProjectAsync()
+    {
+        _gitLabService.Configure(GitLabBaseUrl, GitLabToken);
+        try
+        {
+            var p = await _gitLabService.ValidateProjectAsync(GitLabProjectPath);
+            GitLabProjectName    = p.PathWithNamespace;
+            IsGitLabProjectValid = true;
+            StatusMessage        = $"GitLab 專案確認：{p.PathWithNamespace}";
+            PersistSettings();
+        }
+        catch (Exception ex)
+        {
+            IsGitLabProjectValid = false;
+            GitLabProjectName    = string.Empty;
+            StatusMessage        = $"GitLab 驗證失敗：{ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void SelectAllBugs()
+    {
+        foreach (var b in Bugs) b.IsSelected = true;
+        SelectedBugCount = Bugs.Count;
+    }
+
+    [RelayCommand]
+    private void DeselectAllBugs()
+    {
+        foreach (var b in Bugs) b.IsSelected = false;
+        SelectedBugCount = 0;
+    }
+
+    [RelayCommand]
+    private async Task ImportToGitLabAsync()
+    {
+        var selected = Bugs.Where(b => b.IsSelected).ToList();
+        if (selected.Count == 0)
+        {
+            StatusMessage = "請先勾選要匯入的 Bug。";
+            return;
+        }
+
+        IsImportingToGitLab    = true;
+        GitLabImportProgress   = 0;
+        GitLabImportTotal      = selected.Count;
+
+        try
+        {
+            for (int i = 0; i < selected.Count; i++)
+            {
+                var bug = selected[i];
+                StatusMessage = $"匯入中 {i + 1}/{selected.Count}  (Bug #{bug.Id})...";
+
+                // Fetch detail + attachments
+                var detail      = await _bugzillaService.GetBugDetailWithCommentsAsync(bug.Id);
+                if (detail is null) { GitLabImportProgress = i + 1; continue; }
+
+                List<BugAttachment> attachments;
+                try   { attachments = await _bugzillaService.GetBugAttachmentsAsync(bug.Id); }
+                catch { attachments = []; }
+
+                // Upload image attachments
+                var imageMarkdowns = new List<string>();
+                foreach (var att in attachments)
+                {
+                    if (!GitLabService.IsImageAttachment(att)) continue;
+                    if (string.IsNullOrEmpty(att.Data))        continue;
+                    try
+                    {
+                        var bytes    = Convert.FromBase64String(att.Data);
+                        var markdown = await _gitLabService.UploadImageAsync(att.FileName, bytes, att.ContentType);
+                        imageMarkdowns.Add(markdown);
+                    }
+                    catch { /* skip failed uploads */ }
+                }
+
+                // Build issue body
+                var bodyText = detail.Comments.Count > 0 ? detail.Comments[0].Text : string.Empty;
+                if (imageMarkdowns.Count > 0)
+                    bodyText += "\n\n## 附件\n" + string.Join("\n", imageMarkdowns);
+
+                // Create GitLab issue
+                var issue = await _gitLabService.CreateIssueAsync(bug.Summary, bodyText);
+
+                // Add subsequent comments as notes
+                for (int c = 1; c < detail.Comments.Count; c++)
+                {
+                    var comment = detail.Comments[c];
+                    if (!string.IsNullOrWhiteSpace(comment.Text))
+                        await _gitLabService.AddNoteAsync(issue.Iid, comment.Text);
+                }
+
+                GitLabImportProgress = i + 1;
+            }
+
+            StatusMessage = $"已匯入 {selected.Count} 個 Bug 到 GitLab。";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"匯入失敗：{ex.Message}";
+        }
+        finally
+        {
+            IsImportingToGitLab = false;
+        }
     }
 
     [RelayCommand]
@@ -146,6 +310,7 @@ public partial class MainViewModel : ObservableObject
         _bugzillaService.Configure(BugzillaUrl, ApiKey);
         IsLoading = true;
         StatusMessage = "Searching bugs...";
+        foreach (var b in Bugs) b.PropertyChanged -= OnBugSelectionChanged;
         Bugs.Clear();
         SelectedBugDetail = null;
 

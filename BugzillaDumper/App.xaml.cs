@@ -26,10 +26,12 @@ public partial class App : Application
 
         try
         {
-            var httpClient = new HttpClient();
+            var httpClient      = new HttpClient();
+            var gitLabHttpClient = new HttpClient();
             var bugzillaService = new BugzillaService(httpClient);
-            var updateService = new UpdateService();
-            var viewModel = new MainViewModel(bugzillaService, updateService);
+            var updateService   = new UpdateService();
+            var gitLabService   = new GitLabService(gitLabHttpClient);
+            var viewModel       = new MainViewModel(bugzillaService, updateService, gitLabService);
 
             var window = new MainWindow(viewModel);
             window.Show();

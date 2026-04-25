@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace BugzillaDumper.Models;
 
@@ -9,8 +10,10 @@ public class BugListResponse
     public List<BugSummary> Bugs { get; set; } = [];
 }
 
-public class BugSummary
+public partial class BugSummary : ObservableObject
 {
+    [ObservableProperty] private bool _isSelected;
+
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
@@ -167,6 +170,9 @@ public class SearchCriteria
 
 public class AppSettings
 {
-    public string BugzillaUrl { get; set; } = string.Empty;
-    public string ApiKey { get; set; } = string.Empty;
+    public string BugzillaUrl        { get; set; } = string.Empty;
+    public string ApiKey             { get; set; } = string.Empty;
+    public string GitLabBaseUrl      { get; set; } = string.Empty;
+    public string GitLabToken        { get; set; } = string.Empty;
+    public string GitLabProjectPath  { get; set; } = string.Empty;
 }

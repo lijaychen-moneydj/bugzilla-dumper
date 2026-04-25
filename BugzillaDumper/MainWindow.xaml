@@ -158,6 +158,38 @@
                                FontSize="12" Foreground="#A8C4E8" VerticalAlignment="Bottom" Margin="6,0,0,3"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding ToggleGitLabPanelCommand}"
+                            Margin="0,0,14,0" Padding="10,5" FontSize="12" Cursor="Hand"
+                            BorderThickness="1">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Content" Value="GitLab ▶"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="#A8C4E8"/>
+                                <Setter Property="BorderBrush" Value="#4A6FA8"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="4"
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsGitLabPanelVisible}" Value="True">
+                                        <Setter Property="Content" Value="GitLab ◀"/>
+                                        <Setter Property="Background" Value="#3A5A8C"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,6,0">
                         <Ellipse.Style>
                             <Style TargetType="Ellipse">
@@ -400,12 +432,14 @@
             </Expander>
         </Border>
 
-        <!-- Main Content: Bug List + Detail -->
+        <!-- Main Content: Bug List | Detail | GitLab -->
         <Grid Grid.Row="4" Margin="12,8,12,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2.5*"/>
                 <ColumnDefinition Width="8"/>
                 <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- Left: Bug List -->
@@ -609,6 +643,14 @@
                                 </Style>
                             </DataGrid.CellStyle>
                             <DataGrid.Columns>
+                                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False" Header="☑">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="60" MinWidth="50"/>
                                 <DataGridTemplateColumn Header="Status" Width="90">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -877,6 +919,100 @@
                         </ScrollViewer>
                     </Grid>
                 </Grid>
+            </Border>
+
+            <!-- GitLab Splitter -->
+            <GridSplitter Grid.Column="3" Width="8" HorizontalAlignment="Stretch"
+                          Background="#E5E7EB" VerticalAlignment="Stretch"
+                          Visibility="{Binding IsGitLabPanelVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+            <!-- GitLab Import Panel -->
+            <Border Grid.Column="4" Style="{StaticResource Card}" MinWidth="260"
+                    Visibility="{Binding IsGitLabPanelVisible, Converter={StaticResource BoolToVisibility}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="GITLAB IMPORT" FontSize="12" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,14"/>
+
+                        <!-- GitLab URL -->
+                        <TextBlock Text="GITLAB URL" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource InputBox}" Margin="0,0,0,8"
+                                 Text="{Binding GitLabBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="e.g. https://gitlab.example.com"/>
+
+                        <!-- Access Token -->
+                        <TextBlock Text="ACCESS TOKEN" Style="{StaticResource FieldLabel}"/>
+                        <TextBox Style="{StaticResource InputBox}" Margin="0,0,0,8"
+                                 Text="{Binding GitLabToken, UpdateSourceTrigger=PropertyChanged}"
+                                 FontFamily="Consolas"/>
+
+                        <!-- Project Path + Validate -->
+                        <TextBlock Text="PROJECT PATH" Style="{StaticResource FieldLabel}"/>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="4"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Style="{StaticResource InputBox}"
+                                     Text="{Binding GitLabProjectPath, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="e.g. namespace/project"/>
+                            <Button Grid.Column="2" Content="驗證"
+                                    Style="{StaticResource PrimaryButton}"
+                                    Command="{Binding ValidateGitLabProjectCommand}"
+                                    FontSize="12" Padding="10,6"/>
+                        </Grid>
+
+                        <!-- Project validated badge -->
+                        <Border Background="#DCFCE7" BorderBrush="#BBF7D0" BorderThickness="1"
+                                CornerRadius="4" Padding="8,5" Margin="0,0,0,12"
+                                Visibility="{Binding IsGitLabProjectValid, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock FontSize="11" Foreground="#166534" TextWrapping="Wrap">
+                                <Run Text="✓  "/>
+                                <Run Text="{Binding GitLabProjectName}"/>
+                            </TextBlock>
+                        </Border>
+
+                        <Separator Margin="0,2,0,12"/>
+
+                        <!-- Bug selection -->
+                        <TextBlock Text="BUG SELECTION" Style="{StaticResource FieldLabel}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button Content="全選" Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding SelectAllBugsCommand}"
+                                    FontSize="11" Padding="8,4" Margin="0,0,4,0"/>
+                            <Button Content="全消" Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding DeselectAllBugsCommand}"
+                                    FontSize="11" Padding="8,4" Margin="0,0,8,0"/>
+                            <Border Background="#EFF6FF" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                <TextBlock FontSize="11" Foreground="#1D4ED8">
+                                    <Run Text="{Binding SelectedBugCount, Mode=OneWay}"/>
+                                    <Run Text=" 已選"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Import button -->
+                        <Button Content="匯入 GitLab →" Margin="0,0,0,8"
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding ImportToGitLabCommand}"
+                                IsEnabled="{Binding IsGitLabProjectValid}"
+                                FontSize="13" Padding="12,8"/>
+
+                        <!-- Import progress -->
+                        <StackPanel Visibility="{Binding IsImportingToGitLab, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4">
+                                <Run Text="{Binding GitLabImportProgress, Mode=OneWay}"/>
+                                <Run Text=" / "/>
+                                <Run Text="{Binding GitLabImportTotal, Mode=OneWay}"/>
+                            </TextBlock>
+                            <ProgressBar Minimum="0" Maximum="{Binding GitLabImportTotal}"
+                                         Value="{Binding GitLabImportProgress}"
+                                         Height="6" Foreground="{StaticResource PrimaryBrush}"
+                                         Background="#E0E7FF" BorderThickness="0"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 

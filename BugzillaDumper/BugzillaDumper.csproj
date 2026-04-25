@@ -21,6 +21,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.3" />
     <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Google.Apis.Drive.v3" Version="1.73.0.4112" />
     <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
@@ -36,21 +37,10 @@
   <!-- Windows-only auto deploy: only runs when publishing for win-x64 -->
   <Target Name="CopyToDeployTarget" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <Message Text="Copying to $(DeployTarget) ..." Importance="high" />
-    <Copy
-      SourceFiles="$(PublishDir)BugzillaDumper.exe"
-      DestinationFolder="$(DeployTarget)"
-      OverwriteReadOnlyFiles="true"
-      ContinueOnError="true" />
+    <Copy SourceFiles="$(PublishDir)BugzillaDumper.exe" DestinationFolder="$(DeployTarget)" OverwriteReadOnlyFiles="true" ContinueOnError="true" />
     <!-- Write version.txt so clients can detect updates -->
-    <WriteLinesToFile
-      File="$(PublishDir)version.txt"
-      Lines="$(AppVersionNumber)"
-      Overwrite="true" />
-    <Copy
-      SourceFiles="$(PublishDir)version.txt"
-      DestinationFolder="$(DeployTarget)"
-      OverwriteReadOnlyFiles="true"
-      ContinueOnError="true" />
+    <WriteLinesToFile File="$(PublishDir)version.txt" Lines="$(AppVersionNumber)" Overwrite="true" />
+    <Copy SourceFiles="$(PublishDir)version.txt" DestinationFolder="$(DeployTarget)" OverwriteReadOnlyFiles="true" ContinueOnError="true" />
     <Message Text="Deploy complete: $(DeployTarget)\BugzillaDumper.exe  [v$(AppVersionNumber)]" Importance="high" />
   </Target>
 

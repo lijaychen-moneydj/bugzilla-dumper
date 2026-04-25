@@ -599,6 +599,23 @@
                             </TextBlock>
                         </Border>
 
+                        <Expander Header="GOOGLE DRIVE (影片)" Margin="0,0,0,8">
+                            <StackPanel Margin="0,5,0,0">
+                                <TextBlock Text="CLIENT ID" Classes="field-label"/>
+                                <TextBox Classes="input" Margin="0,0,0,6"
+                                         Text="{Binding GoogleClientId, Mode=TwoWay}"/>
+                                <TextBlock Text="CLIENT SECRET" Classes="field-label"/>
+                                <TextBox Classes="input" Margin="0,0,0,6"
+                                         Text="{Binding GoogleClientSecret, Mode=TwoWay}"
+                                         PasswordChar="*"/>
+                                <TextBlock Text="FOLDER ID" Classes="field-label"/>
+                                <TextBox Classes="input" Margin="0,0,0,6"
+                                         Text="{Binding GoogleDriveFolderId, Mode=TwoWay}"/>
+                                <TextBlock Text="* 留空則上傳至根目錄" FontSize="10" 
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                        </Expander>
+
                         <Separator Margin="0,2,0,12"/>
 
                         <TextBlock Text="BUG SELECTION" Classes="field-label"/>

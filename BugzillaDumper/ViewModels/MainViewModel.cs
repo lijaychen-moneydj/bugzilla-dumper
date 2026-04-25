@@ -67,10 +67,13 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool   _isUpdating;
 
     // GitLab
-    [ObservableProperty] private string _gitLabBaseUrl      = string.Empty;
-    [ObservableProperty] private string _gitLabToken        = string.Empty;
-    [ObservableProperty] private string _gitLabProjectPath  = string.Empty;
-    [ObservableProperty] private string _gitLabProjectName  = string.Empty;
+    [ObservableProperty] private string _gitLabBaseUrl       = string.Empty;
+    [ObservableProperty] private string _gitLabToken         = string.Empty;
+    [ObservableProperty] private string _gitLabProjectPath   = string.Empty;
+    [ObservableProperty] private string _gitLabProjectName   = string.Empty;
+    [ObservableProperty] private string _googleDriveFolderId = string.Empty;
+    [ObservableProperty] private string _googleClientId      = string.Empty;
+    [ObservableProperty] private string _googleClientSecret  = string.Empty;
     [ObservableProperty] private bool   _isGitLabProjectValid;
     [ObservableProperty] private bool   _isImportingToGitLab;
     [ObservableProperty] private int    _gitLabImportProgress;
@@ -160,21 +163,27 @@ public partial class MainViewModel : ObservableObject
     private void LoadSettings()
     {
         var s = SettingsService.Load();
-        BugzillaUrl       = s.BugzillaUrl;
-        ApiKey            = s.ApiKey;
-        GitLabBaseUrl     = s.GitLabBaseUrl;
-        GitLabToken       = s.GitLabToken;
-        GitLabProjectPath = s.GitLabProjectPath;
+        BugzillaUrl         = s.BugzillaUrl;
+        ApiKey              = s.ApiKey;
+        GitLabBaseUrl       = s.GitLabBaseUrl;
+        GitLabToken         = s.GitLabToken;
+        GitLabProjectPath   = s.GitLabProjectPath;
+        GoogleDriveFolderId = s.GoogleDriveFolderId;
+        GoogleClientId      = s.GoogleClientId;
+        GoogleClientSecret  = s.GoogleClientSecret;
     }
 
     private void PersistSettings() =>
         SettingsService.Save(new AppSettings
         {
-            BugzillaUrl       = BugzillaUrl,
-            ApiKey            = ApiKey,
-            GitLabBaseUrl     = GitLabBaseUrl,
-            GitLabToken       = GitLabToken,
-            GitLabProjectPath = GitLabProjectPath,
+            BugzillaUrl         = BugzillaUrl,
+            ApiKey              = ApiKey,
+            GitLabBaseUrl       = GitLabBaseUrl,
+            GitLabToken         = GitLabToken,
+            GitLabProjectPath   = GitLabProjectPath,
+            GoogleDriveFolderId = GoogleDriveFolderId,
+            GoogleClientId      = GoogleClientId,
+            GoogleClientSecret  = GoogleClientSecret,
         });
 
     [RelayCommand]
@@ -239,6 +248,8 @@ public partial class MainViewModel : ObservableObject
         GitLabImportProgress   = 0;
         GitLabImportTotal      = selected.Count;
 
+        var gdService = new GoogleDriveService(GoogleClientId, GoogleClientSecret, GoogleDriveFolderId);
+
         try
         {
             for (int i = 0; i < selected.Count; i++)
@@ -256,27 +267,46 @@ public partial class MainViewModel : ObservableObject
 
                 // Upload image attachments
                 var imageMarkdowns = new List<string>();
+                var videoLinks = new List<string>();
                 var uploadErrors = new List<string>();
                 foreach (var att in attachments)
                 {
-                    if (!GitLabService.IsImageAttachment(att)) continue;
-                    if (string.IsNullOrEmpty(att.Data))        continue;
-                    try
+                    if (string.IsNullOrEmpty(att.Data)) continue;
+
+                    if (GitLabService.IsImageAttachment(att))
                     {
-                        var bytes    = Convert.FromBase64String(att.Data);
-                        var markdown = await _gitLabService.UploadImageAsync(att.FileName, bytes, att.ContentType);
-                        imageMarkdowns.Add(markdown);
+                        try
+                        {
+                            var bytes    = Convert.FromBase64String(att.Data);
+                            var markdown = await _gitLabService.UploadImageAsync(att.FileName, bytes, att.ContentType);
+                            imageMarkdowns.Add(markdown);
+                        }
+                        catch (Exception ex)
+                        {
+                            uploadErrors.Add($"圖片上傳失敗 {att.FileName}: {ex.Message}");
+                        }
                     }
-                    catch (Exception ex)
+                    else if (GitLabService.IsVideoAttachment(att))
                     {
-                        uploadErrors.Add($"{att.FileName}: {ex.Message}");
+                        try
+                        {
+                            var bytes = Convert.FromBase64String(att.Data);
+                            var shareLink = await gdService.UploadVideoAsync(att.FileName, bytes, att.ContentType);
+                            videoLinks.Add($"* 影片附件: [{att.FileName}]({shareLink})");
+                        }
+                        catch (Exception ex)
+                        {
+                            uploadErrors.Add($"影片上傳失敗 {att.FileName}: {ex.Message}");
+                        }
                     }
                 }
 
                 // Build issue body
                 var bodyText = detail.Comments.Count > 0 ? detail.Comments[0].Text : string.Empty;
                 if (imageMarkdowns.Count > 0)
-                    bodyText += "\n\n## 附件\n" + string.Join("\n\n", imageMarkdowns);
+                    bodyText += "\n\n## 附件 (圖片)\n" + string.Join("\n\n", imageMarkdowns);
+                if (videoLinks.Count > 0)
+                    bodyText += "\n\n## 附件 (影片 - Google Drive)\n" + string.Join("\n", videoLinks);
                 if (uploadErrors.Count > 0)
                     bodyText += "\n\n> ⚠ 以下附件上傳失敗：\n> " + string.Join("\n> ", uploadErrors);
 

@@ -170,9 +170,12 @@ public class SearchCriteria
 
 public class AppSettings
 {
-    public string BugzillaUrl        { get; set; } = string.Empty;
-    public string ApiKey             { get; set; } = string.Empty;
-    public string GitLabBaseUrl      { get; set; } = string.Empty;
-    public string GitLabToken        { get; set; } = string.Empty;
-    public string GitLabProjectPath  { get; set; } = string.Empty;
+    public string BugzillaUrl         { get; set; } = string.Empty;
+    public string ApiKey              { get; set; } = string.Empty;
+    public string GitLabBaseUrl       { get; set; } = string.Empty;
+    public string GitLabToken         { get; set; } = string.Empty;
+    public string GitLabProjectPath   { get; set; } = string.Empty;
+    public string GoogleDriveFolderId { get; set; } = string.Empty;
+    public string GoogleClientId      { get; set; } = string.Empty;
+    public string GoogleClientSecret  { get; set; } = string.Empty;
 }

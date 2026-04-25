@@ -1,0 +1,218 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="using:BugzillaDumper.Converters"
+             x:Class="BugzillaDumper.App"
+             RequestedThemeVariant="Light">
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <conv:EmailToUsernameConverter x:Key="EmailToUsername"/>
+            <conv:BugMatchesKeywordConverter x:Key="BugMatchesKeyword"/>
+            <conv:StatusToBackgroundConverter x:Key="StatusToBackground"/>
+            <conv:StatusToForegroundConverter x:Key="StatusToForeground"/>
+            <conv:BoolToBrushConverter x:Key="ConnectedBrush"
+                                       TrueBrush="#22C55E" FalseBrush="#9CA3AF"/>
+            <conv:BoolToStringConverter x:Key="GitLabToggleText"
+                                        TrueValue="GitLab ◀" FalseValue="GitLab ▶"/>
+            <conv:BoolToStringConverter x:Key="ConnectedText"
+                                        TrueValue="Connected" FalseValue="Not Connected"/>
+            <conv:BoolToBrushConverter x:Key="GitLabToggleBackground"
+                                       TrueBrush="#3A5A8C" FalseBrush="Transparent"/>
+            <conv:BoolToBrushConverter x:Key="GitLabToggleForeground"
+                                       TrueBrush="White" FalseBrush="#A8C4E8"/>
+
+            <!-- Colors -->
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#4472C4"/>
+            <SolidColorBrush x:Key="PrimaryDarkBrush" Color="#2F5496"/>
+            <SolidColorBrush x:Key="AccentBrush" Color="#ED7D31"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="BorderColorBrush" Color="#D0D7E3"/>
+            <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1F2937"/>
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="#6B7280"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="#22C55E"/>
+            <SolidColorBrush x:Key="DisabledBrush" Color="#9CA3AF"/>
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme/>
+        <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
+
+        <!-- Buttons -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.primary /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}"/>
+        </Style>
+        <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledBrush}"/>
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#6B7280"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.secondary /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4B5563"/>
+        </Style>
+        <Style Selector="Button.secondary:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledBrush}"/>
+        </Style>
+
+        <Style Selector="Button.success">
+            <Setter Property="Background" Value="#16A34A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.success /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.success:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#15803D"/>
+        </Style>
+        <Style Selector="Button.success:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledBrush}"/>
+        </Style>
+
+        <Style Selector="Button.update">
+            <Setter Property="Background" Value="#F97316"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.update /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.update:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#EA6C00"/>
+        </Style>
+        <Style Selector="Button.update:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="{StaticResource DisabledBrush}"/>
+        </Style>
+
+        <Style Selector="Button.cancel">
+            <Setter Property="Background" Value="#EF4444"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.cancel /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="Button.cancel:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#DC2626"/>
+        </Style>
+
+        <Style Selector="Button.gitlab-toggle">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#4A6FA8"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.gitlab-toggle /template/ ContentPresenter">
+            <Setter Property="Background" Value="{TemplateBinding Background}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+
+        <!-- Input box -->
+        <Style Selector="TextBox.input">
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderColorBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="TextBox.input:focus">
+            <Setter Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+        </Style>
+
+        <!-- Field label -->
+        <Style Selector="TextBlock.field-label">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <!-- Card -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="BoxShadow" Value="0 2 8 0 #0F000000"/>
+        </Style>
+
+        <!-- Sort radio toggle (segmented control) -->
+        <Style Selector="RadioButton.sort">
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="3"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Content="{TemplateBinding Content}"
+                                          Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+        <Style Selector="RadioButton.sort:checked">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </Application.Styles>
+</Application>

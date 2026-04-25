@@ -1,19 +1,27 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <!-- Single-file self-contained publish defaults -->
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="11.2.3" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
@@ -22,10 +30,11 @@
   <PropertyGroup>
     <DeployTarget>\\j-nas01\部門_研發二部\QA\tools\BugzillaDumper</DeployTarget>
     <!-- Keep in sync with AppVersion.cs -->
-    <AppVersionNumber>0.16</AppVersionNumber>
+    <AppVersionNumber>0.19</AppVersionNumber>
   </PropertyGroup>
 
-  <Target Name="CopyToDeployTarget" AfterTargets="Publish">
+  <!-- Windows-only auto deploy: only runs when publishing for win-x64 -->
+  <Target Name="CopyToDeployTarget" AfterTargets="Publish" Condition="'$(RuntimeIdentifier)' == 'win-x64'">
     <Message Text="Copying to $(DeployTarget) ..." Importance="high" />
     <Copy
       SourceFiles="$(PublishDir)BugzillaDumper.exe"

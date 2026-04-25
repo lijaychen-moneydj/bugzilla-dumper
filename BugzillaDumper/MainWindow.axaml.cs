@@ -1,16 +1,14 @@
-using System.Windows;
-using BugzillaDumper.ViewModels;
+using Avalonia.Controls;
 
 namespace BugzillaDumper;
 
 public partial class MainWindow : Window
 {
-    public MainWindow(MainViewModel viewModel)
+    public MainWindow()
     {
         InitializeComponent();
-        DataContext = viewModel;
         Title = AppVersion.Full;
-        TitleVersionText.Text = $"v{AppVersion.Version}";
+        TitleVersionText.Text  = $"v{AppVersion.Version}";
         StatusVersionText.Text = AppVersion.Full;
     }
 }

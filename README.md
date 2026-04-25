@@ -1,6 +1,6 @@
 # Bugzilla Dumper
 
-**v0.12** — .NET 10 WPF Windows App
+**v0.19** — .NET 10 + Avalonia UI（跨平台：Windows / macOS / Linux）
 
 Bugzilla REST API 瀏覽與資料匯出工具，支援 Bug 清單瀏覽、完整內文查看，以及匯出為 JSON / Excel。
 
@@ -59,24 +59,37 @@ Bugzilla REST API 瀏覽與資料匯出工具，支援 Bug 清單瀏覽、完整
 
 ### 環境需求
 - .NET 10 SDK
-- Windows x64
+- Windows x64 / macOS arm64 / macOS x64 / Linux x64
 
 ### 建置
 ```bash
-dotnet build
+dotnet build BugzillaDumper/BugzillaDumper.csproj
 ```
 
-### 發佈（Single-file exe + 自動部署）
+### 發佈（Single-file 自包式可執行檔）
 ```bash
-dotnet publish -c Release
+# Windows x64（同時自動複製到部門 NAS）
+dotnet publish BugzillaDumper/BugzillaDumper.csproj -c Release -r win-x64
+
+# macOS Apple Silicon
+dotnet publish BugzillaDumper/BugzillaDumper.csproj -c Release -r osx-arm64
+
+# macOS Intel
+dotnet publish BugzillaDumper/BugzillaDumper.csproj -c Release -r osx-x64
 ```
 
-Publish 完成後自動複製至：
+Windows publish 完成後自動複製至：
 ```
 \\j-nas01\部門_研發二部\QA\tools\BugzillaDumper\BugzillaDumper.exe
 ```
+（其他平台的 publish 不會觸發此步驟。）
 
-輸出的 exe 為 single-file self-contained，無需安裝 .NET Runtime 即可執行，約 144 MB。
+輸出為 single-file self-contained，無需安裝 .NET Runtime 即可執行（Windows 約 110 MB、macOS 約 116 MB）。
+
+### 平台差異
+- **自動更新**：僅 Windows 支援（透過共用資料夾 `\\j-nas01\...`）。macOS / Linux 上會跳過更新檢查。
+- **匯出對話框**：macOS 使用原生 NSSavePanel，其他平台使用各自原生對話框。
+- **「含附件」匯出後開啟資料夾**：Windows 用 explorer、macOS 用 `open`、Linux 用 `xdg-open`。
 
 ---
 
@@ -85,18 +98,25 @@ Publish 完成後自動複製至：
 ```
 BugzillaDumper/
 ├── Models/
-│   └── BugzillaModels.cs       # BugSummary, BugDetail, BugComment, SearchCriteria 等
+│   ├── BugzillaModels.cs           # BugSummary, BugDetail, BugComment, SearchCriteria 等
+│   └── GitLabModels.cs             # GitLab 匯入相關 model
 ├── Services/
-│   ├── BugzillaService.cs      # Bugzilla REST API 呼叫（含自動分頁）
-│   ├── ExportService.cs        # JSON / Excel 匯出
-│   └── SettingsService.cs      # 連線設定讀寫（%AppData%）
+│   ├── BugzillaService.cs          # Bugzilla REST API 呼叫（含自動分頁）
+│   ├── GitLabService.cs            # GitLab 匯入 API 呼叫
+│   ├── ExportService.cs            # JSON / Excel 匯出
+│   ├── SettingsService.cs          # 連線設定讀寫（跨平台用 user app data 路徑）
+│   ├── UpdateService.cs            # 自動更新（Windows-only，其他平台 no-op）
+│   ├── IFilePickerService.cs       # 匯出檔對話框抽象
+│   ├── AvaloniaFilePickerService.cs# Avalonia StorageProvider 實作
+│   └── PlatformHelpers.cs          # 跨平台「開啟資料夾」
 ├── ViewModels/
-│   └── MainViewModel.cs        # MVVM ViewModel
+│   └── MainViewModel.cs            # MVVM ViewModel
 ├── Converters/
-│   └── Converters.cs           # WPF Value Converters
-├── AppVersion.cs               # 版號集中管理
-├── MainWindow.xaml             # 主畫面 UI
-└── App.xaml.cs                 # 啟動 + 全域 Exception Handler
+│   └── Converters.cs               # Avalonia Value Converters
+├── AppVersion.cs                   # 版號集中管理
+├── Program.cs                      # Avalonia 進入點
+├── App.axaml / App.axaml.cs        # Application 樣式 + 啟動邏輯
+└── MainWindow.axaml / .axaml.cs    # 主畫面 UI
 ```
 
 ---

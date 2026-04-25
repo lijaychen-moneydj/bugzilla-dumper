@@ -39,24 +39,36 @@ public class GitLabService(HttpClient httpClient)
 
     public async Task<string> UploadImageAsync(string fileName, byte[] data, string contentType)
     {
-        using var form    = new MultipartFormDataContent();
-        var       fc      = new ByteArrayContent(data);
-        fc.Headers.ContentType = MediaTypeHeaderValue.Parse(contentType);
+        using var form = new MultipartFormDataContent();
+        var       fc   = new ByteArrayContent(data);
+
+        // Bugzilla 偶爾回空 / 不合法的 content-type，給個保底
+        var ct = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType;
+        try   { fc.Headers.ContentType = MediaTypeHeaderValue.Parse(ct); }
+        catch { fc.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream"); }
+
         form.Add(fc, "file", fileName);
 
         var resp = await httpClient.PostAsync(
             $"{_baseUrl}/api/v4/projects/{_projectId}/uploads", form);
-        resp.EnsureSuccessStatusCode();
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"GitLab upload {(int)resp.StatusCode} {resp.StatusCode}: {body}");
+        }
 
         var upload = JsonSerializer.Deserialize<GitLabUpload>(
             await resp.Content.ReadAsStringAsync())
             ?? throw new Exception("Invalid upload response");
 
-        // Use the markdown field if it looks like an absolute URL; otherwise build one
-        if (!string.IsNullOrEmpty(upload.Markdown) && upload.Markdown.Contains("http"))
+        // GitLab 回的 markdown 已經是專案內可正確 render 的相對路徑（例如 ![image](/uploads/abcd/foo.png)）
+        // 直接用它最穩；fallback 才自己組
+        if (!string.IsNullOrEmpty(upload.Markdown))
             return upload.Markdown;
 
-        return $"![{upload.Alt}]({_baseUrl}{upload.Url})";
+        return $"![{upload.Alt}]({upload.Url})";
     }
 
     public async Task<GitLabIssue> CreateIssueAsync(string title, string description)

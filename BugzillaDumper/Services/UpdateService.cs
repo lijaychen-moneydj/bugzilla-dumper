@@ -1,7 +1,10 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 
 namespace BugzillaDumper.Services;
 
@@ -11,12 +14,16 @@ public class UpdateService
     private const string RemoteVersionFile = DeployPath + @"\version.txt";
     private const string RemoteExe = DeployPath + @"\BugzillaDumper.exe";
 
+    private static bool IsSupported => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+
     /// <summary>
     /// Checks the remote version.txt. Returns the remote version string if it is
     /// newer than the running version, otherwise null.
     /// </summary>
     public async Task<string?> CheckAsync()
     {
+        if (!IsSupported) return null;
+
         try
         {
             var remoteRaw = await Task.Run(() => File.ReadAllText(RemoteVersionFile)).ConfigureAwait(false);
@@ -37,9 +44,13 @@ public class UpdateService
     /// <summary>
     /// Copies the remote exe to %TEMP%, writes a bat that waits for this process to
     /// exit then swaps the file and restarts, then shuts down the app.
+    /// Windows-only — throws on other platforms.
     /// </summary>
     public void ApplyUpdate(Action<string> onStatus)
     {
+        if (!IsSupported)
+            throw new PlatformNotSupportedException("自動更新僅支援 Windows 平台。");
+
         var currentExe = Process.GetCurrentProcess().MainModule?.FileName
                          ?? Environment.ProcessPath
                          ?? throw new InvalidOperationException("Cannot determine current exe path.");
@@ -70,8 +81,11 @@ public class UpdateService
             UseShellExecute = false
         });
 
-        System.Windows.Application.Current.Dispatcher.Invoke(
-            System.Windows.Application.Current.Shutdown);
+        Dispatcher.UIThread.Invoke(() =>
+        {
+            if (Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                desktop.Shutdown();
+        });
     }
 
     private static bool TryParseVersion(string s, out Version version)

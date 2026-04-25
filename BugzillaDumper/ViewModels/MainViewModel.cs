@@ -7,20 +7,21 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using BugzillaDumper.Models;
 using BugzillaDumper.Services;
-using Microsoft.Win32;
 
 namespace BugzillaDumper.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly BugzillaService _bugzillaService;
-    private readonly UpdateService   _updateService;
-    private readonly GitLabService   _gitLabService;
-    private CancellationTokenSource? _fetchCts;
+    private readonly BugzillaService    _bugzillaService;
+    private readonly UpdateService      _updateService;
+    private readonly GitLabService      _gitLabService;
+    private readonly IFilePickerService _filePicker;
+    private CancellationTokenSource?    _fetchCts;
 
     [ObservableProperty] private string _bugzillaUrl = string.Empty;
     [ObservableProperty] private string _apiKey = string.Empty;
@@ -81,7 +82,7 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _listKeyword = string.Empty;
     [ObservableProperty] private int _listMatchCount;
 
-    partial void OnListKeywordChanged(string _) => RefreshMatchCount();
+    partial void OnListKeywordChanged(string value) => RefreshMatchCount();
 
     [RelayCommand]
     private void ClearListKeyword() => ListKeyword = string.Empty;
@@ -104,11 +105,12 @@ public partial class MainViewModel : ObservableObject
         || bug.Status.Contains(keyword, StringComparison.OrdinalIgnoreCase)
         || bug.Resolution.Contains(keyword, StringComparison.OrdinalIgnoreCase);
 
-    public MainViewModel(BugzillaService bugzillaService, UpdateService updateService, GitLabService gitLabService)
+    public MainViewModel(BugzillaService bugzillaService, UpdateService updateService, GitLabService gitLabService, IFilePickerService filePicker)
     {
         _bugzillaService = bugzillaService;
         _updateService   = updateService;
         _gitLabService   = gitLabService;
+        _filePicker      = filePicker;
         LoadSettings();
 
         // Track IsSelected changes on each bug for SelectedBugCount
@@ -146,7 +148,7 @@ public partial class MainViewModel : ObservableObject
         try
         {
             await Task.Run(() => _updateService.ApplyUpdate(msg =>
-                System.Windows.Application.Current.Dispatcher.Invoke(() => StatusMessage = msg)));
+                Dispatcher.UIThread.Invoke(() => StatusMessage = msg)));
         }
         catch (Exception ex)
         {
@@ -254,6 +256,7 @@ public partial class MainViewModel : ObservableObject
 
                 // Upload image attachments
                 var imageMarkdowns = new List<string>();
+                var uploadErrors = new List<string>();
                 foreach (var att in attachments)
                 {
                     if (!GitLabService.IsImageAttachment(att)) continue;
@@ -264,13 +267,18 @@ public partial class MainViewModel : ObservableObject
                         var markdown = await _gitLabService.UploadImageAsync(att.FileName, bytes, att.ContentType);
                         imageMarkdowns.Add(markdown);
                     }
-                    catch { /* skip failed uploads */ }
+                    catch (Exception ex)
+                    {
+                        uploadErrors.Add($"{att.FileName}: {ex.Message}");
+                    }
                 }
 
                 // Build issue body
                 var bodyText = detail.Comments.Count > 0 ? detail.Comments[0].Text : string.Empty;
                 if (imageMarkdowns.Count > 0)
-                    bodyText += "\n\n## 附件\n" + string.Join("\n", imageMarkdowns);
+                    bodyText += "\n\n## 附件\n" + string.Join("\n\n", imageMarkdowns);
+                if (uploadErrors.Count > 0)
+                    bodyText += "\n\n> ⚠ 以下附件上傳失敗：\n> " + string.Join("\n> ", uploadErrors);
 
                 // Create GitLab issue
                 var issue = await _gitLabService.CreateIssueAsync(bug.Summary, bodyText);
@@ -284,6 +292,9 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 GitLabImportProgress = i + 1;
+
+                if (uploadErrors.Count > 0)
+                    StatusMessage = $"Bug #{bug.Id}：{uploadErrors.Count} 個附件上傳失敗（{uploadErrors[0]}）";
             }
 
             StatusMessage = $"已匯入 {selected.Count} 個 Bug 到 GitLab。";
@@ -379,24 +390,20 @@ public partial class MainViewModel : ObservableObject
         var details = await FetchAllDetailsAsync();
         if (details is null) return;
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Full Dump to JSON",
-            Filter = "JSON Files (*.json)|*.json",
-            FileName = $"bugs_full_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-        };
+        var path = await _filePicker.SaveFileAsync(
+            "Export Full Dump to JSON",
+            $"bugs_full_{DateTime.Now:yyyyMMdd_HHmmss}.json",
+            "JSON Files", "json");
+        if (path is null) return;
 
-        if (dlg.ShowDialog() == true)
+        try
         {
-            try
-            {
-                ExportService.ExportFullDumpToJson(details, dlg.FileName);
-                StatusMessage = $"Exported {details.Count} bugs (with details) to {dlg.FileName}";
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Export error: {ex.Message}";
-            }
+            ExportService.ExportFullDumpToJson(details, path);
+            StatusMessage = $"Exported {details.Count} bugs (with details) to {path}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Export error: {ex.Message}";
         }
     }
 
@@ -406,25 +413,21 @@ public partial class MainViewModel : ObservableObject
         var details = await FetchAllDetailsAsync();
         if (details is null) return;
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Full Dump to Excel",
-            Filter = "Excel Files (*.xlsx)|*.xlsx",
-            FileName = $"bugs_full_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
-        };
+        var path = await _filePicker.SaveFileAsync(
+            "Export Full Dump to Excel",
+            $"bugs_full_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            "Excel Files", "xlsx");
+        if (path is null) return;
 
-        if (dlg.ShowDialog() == true)
+        try
         {
-            try
-            {
-                StatusMessage = "Writing Excel file...";
-                await Task.Run(() => ExportService.ExportFullDumpToExcel(details, dlg.FileName));
-                StatusMessage = $"Exported {details.Count} bugs (with details) to {dlg.FileName}";
-            }
-            catch (Exception ex)
-            {
-                StatusMessage = $"Export error: {ex.Message}";
-            }
+            StatusMessage = "Writing Excel file...";
+            await Task.Run(() => ExportService.ExportFullDumpToExcel(details, path));
+            StatusMessage = $"Exported {details.Count} bugs (with details) to {path}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Export error: {ex.Message}";
         }
     }
 
@@ -447,10 +450,10 @@ public partial class MainViewModel : ObservableObject
             await ExportService.ExportToFolderAsync(
                 details, outputFolder,
                 fetchAttachments: id => _bugzillaService.GetBugAttachmentsAsync(id),
-                onStatus: msg => System.Windows.Application.Current.Dispatcher.Invoke(() => StatusMessage = msg),
-                onProgress: i  => System.Windows.Application.Current.Dispatcher.Invoke(() => FetchProgress = i));
+                onStatus: msg => Dispatcher.UIThread.Invoke(() => StatusMessage = msg),
+                onProgress: i  => Dispatcher.UIThread.Invoke(() => FetchProgress = i));
 
-            System.Diagnostics.Process.Start("explorer.exe", outputFolder);
+            PlatformHelpers.OpenFolder(outputFolder);
         }
         catch (Exception ex)
         {
@@ -525,75 +528,63 @@ public partial class MainViewModel : ObservableObject
     // ── Individual exports ────────────────────────────────────────────────────
 
     [RelayCommand]
-    private void ExportBugsToJson()
+    private async Task ExportBugsToJsonAsync()
     {
         if (Bugs.Count == 0) { StatusMessage = "No bugs to export."; return; }
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Bug List to JSON",
-            Filter = "JSON Files (*.json)|*.json",
-            FileName = $"bugs_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try { ExportService.ExportBugsToJson([.. Bugs], dlg.FileName); StatusMessage = $"Exported {Bugs.Count} bugs to {dlg.FileName}"; }
-            catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
-        }
+        var path = await _filePicker.SaveFileAsync(
+            "Export Bug List to JSON",
+            $"bugs_{DateTime.Now:yyyyMMdd_HHmmss}.json",
+            "JSON Files", "json");
+        if (path is null) return;
+
+        try { ExportService.ExportBugsToJson([.. Bugs], path); StatusMessage = $"Exported {Bugs.Count} bugs to {path}"; }
+        catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
     }
 
     [RelayCommand]
-    private void ExportBugsToExcel()
+    private async Task ExportBugsToExcelAsync()
     {
         if (Bugs.Count == 0) { StatusMessage = "No bugs to export."; return; }
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Bug List to Excel",
-            Filter = "Excel Files (*.xlsx)|*.xlsx",
-            FileName = $"bugs_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try { ExportService.ExportBugsToExcel([.. Bugs], dlg.FileName); StatusMessage = $"Exported {Bugs.Count} bugs to {dlg.FileName}"; }
-            catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
-        }
+        var path = await _filePicker.SaveFileAsync(
+            "Export Bug List to Excel",
+            $"bugs_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            "Excel Files", "xlsx");
+        if (path is null) return;
+
+        try { ExportService.ExportBugsToExcel([.. Bugs], path); StatusMessage = $"Exported {Bugs.Count} bugs to {path}"; }
+        catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
     }
 
     [RelayCommand]
-    private void ExportDetailToJson()
+    private async Task ExportDetailToJsonAsync()
     {
         if (SelectedBugDetail is null) { StatusMessage = "No bug detail to export."; return; }
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Bug Detail to JSON",
-            Filter = "JSON Files (*.json)|*.json",
-            FileName = $"bug_{SelectedBugDetail.Id}_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try { ExportService.ExportBugDetailToJson(SelectedBugDetail, dlg.FileName); StatusMessage = $"Exported bug #{SelectedBugDetail.Id} to {dlg.FileName}"; }
-            catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
-        }
+        var path = await _filePicker.SaveFileAsync(
+            "Export Bug Detail to JSON",
+            $"bug_{SelectedBugDetail.Id}_{DateTime.Now:yyyyMMdd_HHmmss}.json",
+            "JSON Files", "json");
+        if (path is null) return;
+
+        try { ExportService.ExportBugDetailToJson(SelectedBugDetail, path); StatusMessage = $"Exported bug #{SelectedBugDetail.Id} to {path}"; }
+        catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
     }
 
     [RelayCommand]
-    private void ExportDetailToExcel()
+    private async Task ExportDetailToExcelAsync()
     {
         if (SelectedBugDetail is null) { StatusMessage = "No bug detail to export."; return; }
 
-        var dlg = new SaveFileDialog
-        {
-            Title = "Export Bug Detail to Excel",
-            Filter = "Excel Files (*.xlsx)|*.xlsx",
-            FileName = $"bug_{SelectedBugDetail.Id}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx"
-        };
-        if (dlg.ShowDialog() == true)
-        {
-            try { ExportService.ExportBugDetailToExcel(SelectedBugDetail, dlg.FileName); StatusMessage = $"Exported bug #{SelectedBugDetail.Id} detail to {dlg.FileName}"; }
-            catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
-        }
+        var path = await _filePicker.SaveFileAsync(
+            "Export Bug Detail to Excel",
+            $"bug_{SelectedBugDetail.Id}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx",
+            "Excel Files", "xlsx");
+        if (path is null) return;
+
+        try { ExportService.ExportBugDetailToExcel(SelectedBugDetail, path); StatusMessage = $"Exported bug #{SelectedBugDetail.Id} detail to {path}"; }
+        catch (Exception ex) { StatusMessage = $"Export error: {ex.Message}"; }
     }
 
     partial void OnSelectedBugChanged(BugSummary? value)

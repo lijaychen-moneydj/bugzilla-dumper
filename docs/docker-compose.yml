@@ -1,0 +1,58 @@
+# 移除過時的 version 宣告，適配現代 Docker Compose V2
+
+services:
+  db:
+    image: mariadb:10.11 # 使用長期支援版本 (LTS)
+    container_name: bugzilla-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=RootSecurePassword2026!
+      - MYSQL_DATABASE=bugs
+      - MYSQL_USER=bugs
+      - MYSQL_PASSWORD=BugsPassword2026!
+    volumes:
+      - bugzilla_db_data:/var/lib/mysql
+    # 關鍵機制：健康檢查，確保 DB 服務真正準備就緒
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "bugs", "-pBugsPassword2026!"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - bugzilla-net
+
+  bugzilla:
+    image: chardek/bugzilla:latest
+    # 解決你 Mac 的 ARM64 架構衝突
+    platform: linux/amd64 
+    container_name: bugzilla-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # 根據 chardek/bugzilla 的變數規範配置
+      - BUGZILLA_DB_HOST=db
+      - BUGZILLA_DB_USER=bugs
+      - BUGZILLA_DB_PASSWORD=BugsPassword2026!
+      - BUGZILLA_DB_NAME=bugs
+      # 初次啟動時的管理者設定
+      - BUGZILLA_ADMIN_EMAIL=admin@company.com.tw
+      - BUGZILLA_ADMIN_PASSWORD=AdminSecurePassword2026!
+    depends_on:
+      db:
+        condition: service_healthy # 僅在 DB 健康檢查通過後啟動
+    volumes:
+      # 數據持久化，防止容器重啟後附件與設定遺失
+      - bugzilla_data:/var/www/html/data
+    networks:
+      - bugzilla-net
+
+networks:
+  bugzilla-net:
+    driver: bridge
+
+volumes:
+  bugzilla_db_data:
+    name: bugzilla_db_vol
+  bugzilla_data:
+    name: bugzilla_app_vol

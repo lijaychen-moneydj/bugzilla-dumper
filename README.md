@@ -32,26 +32,39 @@ Bugzilla REST API 瀏覽與資料匯出工具，支援 Bug 清單瀏覽、完整
 - 完整欄位（ID、Summary、Status、Priority、Severity、Component、Product、Assigned To、Creator、Whiteboard 等）
 - 依序顯示所有 Comments（作者、時間、內文）
 
-### 匯出
+### 匯出與匯入
 
-#### List Only（Bug 清單）
+#### 資料匯出 (Export)
 | 格式 | 內容 |
 |------|------|
-| JSON | Bug 清單陣列 |
-| Excel | 單一 Sheet，含 AutoFilter |
+| JSON | Bug 清單或詳細資料（含 Comments） |
+| Excel | 格式化報表，支援 AutoFilter |
+| 資料夾 | 下載所有附件並依 Bug ID 分類儲存 |
 
-#### Full Dump（清單 + 完整內文 + Comments）
-| 格式 | 內容 |
-|------|------|
-| JSON | `BugDetail[]`，每筆含 comments 陣列，中文直接輸出（不 escape） |
-| Excel | 3 個 Sheet：`Bugs`（清單）/ `Details`（完整欄位）/ `Comments`（所有 comments，含 Bug ID 欄） |
+#### GitLab 匯入 (Import)
+- 支援將選定的 Bug 批次匯入 GitLab Issues。
+- 自動處理圖片附件：將 Bugzilla 圖片上傳至 GitLab 並嵌入描述。
+- **Google Drive 影片整合**：
+    - 偵測影片格式附件 (`.mp4`, `.avi`, `.mov` 等)。
+    - 透過 OAuth 2.0 上傳至公司指定的 Google Drive 資料夾（支援 Google Workspace 共用雲端硬碟）。
+    - 上傳成功後自動於 GitLab Issue 描述中插入影片分享連結。
 
-> Full Dump 會逐筆呼叫 API，執行中顯示進度條，可隨時按 Cancel 中止。
+---
 
-#### Detail（單筆）
-點選 Bug 後，Detail 區右上角可單獨匯出該筆 Bug：
-- JSON：完整欄位 + Comments
-- Excel：2 個 Sheet（`Bug Info` / `Comments`）
+## 設定指南
+
+### GitLab & Google Drive 設定
+1. **GitLab**:
+   - 提供 GitLab Base URL (例如 `https://gitlab.com`)。
+   - 建立 [Personal Access Token](https://gitlab.com/-/profile/personal_access_tokens) 並賦予 `api` 權限。
+   - 輸入專案路徑 (例如 `namespace/project`)。
+
+2. **Google Drive (影片上傳)**:
+   - 到 [Google Cloud Console](https://console.cloud.google.com/) 建立專案並啟用 **Google Drive API**。
+   - 建立 **OAuth 2.0 Client ID (桌面應用程式)**。
+   - 將 Client ID 與 Client Secret 填入 App 設定中。
+   - (選填) FOLDER ID: 指定上傳的資料夾 ID（支援共用雲端硬碟）。
+   - **首次匯入含影片的 Bug 時**，App 會自動開啟瀏覽器要求 Google 帳號授權。
 
 ---
 
@@ -59,6 +72,7 @@ Bugzilla REST API 瀏覽與資料匯出工具，支援 Bug 清單瀏覽、完整
 
 ### 環境需求
 - .NET 10 SDK
+- Google Drive API 套件 (`Google.Apis.Drive.v3`)
 - Windows x64 / macOS arm64 / macOS x64 / Linux x64
 
 ### 建置
@@ -90,6 +104,7 @@ Windows publish 完成後自動複製至：
 - **自動更新**：僅 Windows 支援（透過共用資料夾 `\\j-nas01\...`）。macOS / Linux 上會跳過更新檢查。
 - **匯出對話框**：macOS 使用原生 NSSavePanel，其他平台使用各自原生對話框。
 - **「含附件」匯出後開啟資料夾**：Windows 用 explorer、macOS 用 `open`、Linux 用 `xdg-open`。
+- **Google 授權**：桌面版 OAuth 會在本地啟動監聽埠接收授權碼。
 
 ---
 
@@ -98,11 +113,12 @@ Windows publish 完成後自動複製至：
 ```
 BugzillaDumper/
 ├── Models/
-│   ├── BugzillaModels.cs           # BugSummary, BugDetail, BugComment, SearchCriteria 等
+│   ├── BugzillaModels.cs           # BugSummary, BugDetail, BugComment, SearchCriteria, AppSettings
 │   └── GitLabModels.cs             # GitLab 匯入相關 model
 ├── Services/
 │   ├── BugzillaService.cs          # Bugzilla REST API 呼叫（含自動分頁）
-│   ├── GitLabService.cs            # GitLab 匯入 API 呼叫
+│   ├── GitLabService.cs            # GitLab 匯入 API 呼交
+│   ├── GoogleDriveService.cs       # Google Drive OAuth 2.0 上傳（支援共用雲端硬碟）
 │   ├── ExportService.cs            # JSON / Excel 匯出
 │   ├── SettingsService.cs          # 連線設定讀寫（跨平台用 user app data 路徑）
 │   ├── UpdateService.cs            # 自動更新（Windows-only，其他平台 no-op）
@@ -110,7 +126,7 @@ BugzillaDumper/
 │   ├── AvaloniaFilePickerService.cs# Avalonia StorageProvider 實作
 │   └── PlatformHelpers.cs          # 跨平台「開啟資料夾」
 ├── ViewModels/
-│   └── MainViewModel.cs            # MVVM ViewModel
+│   └── MainViewModel.cs            # MVVM ViewModel，處理匯入與上傳邏輯
 ├── Converters/
 │   └── Converters.cs               # Avalonia Value Converters
 ├── AppVersion.cs                   # 版號集中管理
@@ -133,6 +149,7 @@ BugzillaDumper/
 
 | 版本 | 變更 |
 |------|------|
+| 0.20 | 新增 GitLab 匯入功能與 Google Drive 影片整合（支援 OAuth 2.0 與共用雲端硬碟） |
 | 0.12 | Status 改為 CheckBox 勾選（CONFIRMED / IN_PROGRESS / RESOLVED / REOPENED） |
 | 0.11 | 修正 Status 多值 filter 失效（NameValueCollection 合併 key 問題） |
 | 0.10 | 初始版本：Bug 搜尋、Detail、JSON/Excel 匯出、Full Dump、自動分頁、部署 target |

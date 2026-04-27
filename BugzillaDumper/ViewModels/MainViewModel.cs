@@ -302,7 +302,9 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 // Build issue body
-                var bodyText = detail.Comments.Count > 0 ? detail.Comments[0].Text : string.Empty;
+                var originalText = detail.Comments.Count > 0 ? detail.Comments[0].Text : string.Empty;
+                var bodyText = string.IsNullOrWhiteSpace(originalText) ? string.Empty : $"```text\n{originalText}\n```";
+
                 if (imageMarkdowns.Count > 0)
                     bodyText += "\n\n## 附件 (圖片)\n" + string.Join("\n\n", imageMarkdowns);
                 if (videoLinks.Count > 0)
@@ -318,7 +320,10 @@ public partial class MainViewModel : ObservableObject
                 {
                     var comment = detail.Comments[c];
                     if (!string.IsNullOrWhiteSpace(comment.Text))
-                        await _gitLabService.AddNoteAsync(issue.Iid, comment.Text);
+                    {
+                        var noteText = $"```text\n{comment.Text}\n```";
+                        await _gitLabService.AddNoteAsync(issue.Iid, noteText);
+                    }
                 }
 
                 GitLabImportProgress = i + 1;
